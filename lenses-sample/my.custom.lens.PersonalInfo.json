@@ -1,0 +1,12 @@
+{
+  "_t": "tradle.Lens",
+  "model": "tradle.PersonalInfo",
+  "id": "io.easybank.lens.PersonalInfo",
+  "properties": {
+    "country": {
+      "pin": [
+        "UK"
+      ]
+    }
+  }
+}

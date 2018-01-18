@@ -33,7 +33,7 @@ module.exports = {
             "1tbs"
         ],
         "callback-return": "error",
-        "camelcase": "error",
+        "camelcase": "off",
         "capitalized-comments": "off",
         "class-methods-use-this": "error",
         "comma-dangle": "off",
@@ -113,6 +113,7 @@ module.exports = {
         "no-case-declarations": "warn",
         "no-catch-shadow": "error",
         "no-confusing-arrow": "error",
+        "no-console": "off",
         "no-continue": "error",
         "no-div-regex": "error",
         "no-duplicate-imports": "error",

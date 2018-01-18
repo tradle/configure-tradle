@@ -42,7 +42,7 @@ The following sections are optional, e.g. if you don't have Custom Models, skip 
 
 #### Custom Models
 
-See sample custom models in `./models-sample`. You can create your own in `./models`. Put each model in a separate json file where the file name is [yourModel.id].json (see [./models/my.custom.NameForm.json](./models-sample/my.custom.NameForm.json) for an example)
+See sample custom models in `./models-sample`. You can create your own in `./models`. Put each model in a separate json file where the file name is [yourModel.id].json (see [./models-sample/my.custom.NameForm.json](./models-sample/my.custom.NameForm.json) for an example)
 
 Validate and build your models pack with `npm run build:models`
 

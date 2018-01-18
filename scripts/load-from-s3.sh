@@ -9,7 +9,7 @@ source ./scripts/load-env.sh
 files=(
   "conf/style.json"
   "conf/bot.json"
-  "conf/models.json"
+  "conf/models-pack.json"
   "conf/terms-and-conditions.md"
 )
 
