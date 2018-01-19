@@ -2,7 +2,6 @@
 
 const path = require('path')
 const _ = require('lodash')
-const AWS = require('aws-sdk')
 const yn = require('yn')
 const DEPLOY_ITEMS = [
   'bot',
@@ -43,16 +42,18 @@ require('dotenv').config({
   path: path.resolve(process.cwd(), argv.local ? '.env' : '.env.local')
 })
 
-const { deploy } = require('./lib/deploy')
 const {
   aws_profile,
   stack_name
 } = process.env
 
 if (aws_profile) {
-  AWS.config.credentials = new AWS.SharedIniFileCredentials({ profile: aws_profile })
+  process.env.AWS_SDK_LOAD_CONFIG = true
+  process.env.AWS_PROFILE = aws_profile
 }
 
+const AWS = require('aws-sdk')
+const { deploy } = require('./lib/deploy')
 const prettify = obj => JSON.stringify(obj, null, 2)
 
 deploy({
