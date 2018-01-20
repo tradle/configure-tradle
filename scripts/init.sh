@@ -88,6 +88,15 @@ bucket=$(aws --output json --profile $profile cloudformation list-stack-resource
 
 plain ""
 plain "your configuration bucket is: $bucket"
+
+# ask "If you have a @tradle/serverless development environment, please enter the path. Otherwise hit Enter"
+# read -p "> " project_dir
+
+# if [ "$project_dir" && ! -d "$project_dir" ];
+# then
+
+# fi
+
 cat > .env <<EOF
 stack_name=$stack_name
 aws_profile=$profile

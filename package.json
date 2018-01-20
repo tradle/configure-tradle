@@ -1,5 +1,5 @@
 {
-  "name": "@tradle/configure-tradle",
+  "name": "@tradle/conf",
   "version": "1.0.0",
   "description": "template for building, editing and deploying Tradle models, styles and configuration to your Tradle MyCloud",
   "repository": {
@@ -8,34 +8,15 @@
   },
   "author": "Mark Vayngrib <mark@tradle.io> (http://github.com/mvayngrib)",
   "license": "MIT",
+  "main": "./lib/index.js",
+  "bin": {
+    "tradleconf": "./cmd.js"
+  },
   "scripts": {
     "init": "./scripts/init.sh",
     "start": "./scripts/start.sh",
     "lint": "eslint --quiet --ext .json --ext .js .",
-    "validate:models": "validate-model ./conf/models.json --depends-on @tradle/models --depends-on @tradle/custom-models",
-    "validate:style": "node ./lib/validate-style.js ./conf/style.json",
-    "validate:botconf": "node ./lib/validate-botconf.js ./conf/bot.json",
-    "validate:terms": "node ./lib/validate-terms.js ./conf/terms-and-conditions.md",
-    "mergemodels": "pack-models -i ./models -o ./conf/models.json",
-    "mergelenses": "pack-models -i ./lenses -o ./conf/lenses.json",
-    "postpublish": "git push -u",
-    "build": "npm run build:style && npm run build:models && npm run build:botconf && npm run build:terms",
-    "build:models": "npm run mergemodels && npm run mergelenses && npm run validate:models",
-    "build:style": "npm run validate:style",
-    "build:botconf": "npm run validate:botconf",
-    "build:terms": "npm run validate:terms",
-    "precommit": "npm run build && git add ./conf/models.json",
-    "deploy": "node ./lib/deploy.js",
-    "deploy:models": "node ./cmd.js --models",
-    "deploy:style": "node ./cmd.js --style",
-    "deploy:botconf": "node ./cmd.js --bot",
-    "deploy:terms": "node ./cmd.js --terms",
-    "deploy:local": "node ./cmd.js --local",
-    "deploy:local:models": "node ./cmd.js --local --models",
-    "deploy:local:style": "node ./cmd.js --local --style",
-    "deploy:local:botconf": "node ./cmd.js --local --bot",
-    "deploy:local:terms": "node ./cmd.js --local --terms",
-    "load": "./scripts/load-from-s3.sh"
+    "precommit": "npm run lint"
   },
   "keywords": [
     "tradle",
@@ -47,24 +28,28 @@
   "homepage": "https://github.com/tradle/configure-tradle",
   "dependencies": {
     "@tradle/custom-models": "github:tradle/custom-models",
-    "@tradle/lens": "github:tradle/lens",
+    "@tradle/merge-models": "^2.1.0",
     "@tradle/models": "github:tradle/models",
-    "@tradle/models-pack": "github:tradle/models-pack",
-    "@tradle/pack-models": "^2.0.0",
+    "@tradle/models-pack": "^1.0.2",
     "@tradle/validate-model": "^5.1.1",
     "@tradle/validate-resource": "^2.16.0",
     "aws-sdk": "^2.181.0",
+    "co": "^4.6.0",
+    "commander": "^2.13.0",
     "dotenv": "^4.0.0",
     "eslint": "^3.15.0",
     "eslint-plugin-json": "^1.2.0",
-    "git": "^0.1.5",
-    "husky": "^0.13.1",
     "lodash": "^4.17.4",
     "marked": "^0.3.9",
-    "minimist": "^1.2.0",
+    "mkdirp": "^0.5.1",
+    "pify": "^3.0.0",
+    "promptly": "^2.2.0",
     "shelljs": "^0.8.0",
-    "typeforce": "^1.10.6",
-    "write-file-atomic": "^1.1.4",
+    "tmp": "0.0.33",
+    "update-notifier": "^2.3.0",
     "yn": "^2.0.0"
+  },
+  "devDependencies": {
+    "husky": "^0.14.3"
   }
 }
