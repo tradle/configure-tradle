@@ -1,7 +1,9 @@
+import matches from 'lodash/matches'
 import sortBy from 'lodash/sortBy'
 import inquirer from 'inquirer'
 import Listr from 'listr'
 import promiseRetry from 'promise-retry'
+// import { toSortableTag, sortTags, compareTags } from 'lexicographic-semver'
 import Errors from '@tradle/errors'
 import { Conf, UpdateOpts, VersionInfo, GetUpdateInfoResp } from './types'
 import { Errors as CustomErrors } from './errors'
@@ -21,35 +23,51 @@ class Updater {
   private opts: UpdateOpts
   private updates: VersionInfo[]
   private currentVersion: VersionInfo
+  private targetTag: string
+  private verb: string
   constructor({ conf, opts, currentVersion, updates }: {
     conf: Conf
     opts: UpdateOpts
     currentVersion?: VersionInfo
     updates?: VersionInfo[]
   }) {
+    // if (opts.rollback) {
+    //   throw new Error('rollback command not supported at the moment')
+    // }
+
     this.conf = conf
     this.opts = opts
     this.currentVersion = currentVersion
     this.updates = updates
+    this.targetTag = opts.tag
+    this.verb = opts.rollback ? 'rollback' : 'update'
   }
 
   public update = async () => {
-    const { provider, rollback } = this.opts
-    if (!this.currentVersion) {
+    const { targetTag, currentVersion, updates, opts } = this
+    const { provider, rollback } = opts
+    if (!currentVersion) {
       this.currentVersion = await this.conf.getCurrentVersion()
     }
 
-    if (!this.updates) {
+    if (!updates) {
       this.updates = await this._loadUpdates()
     }
 
-    await this._update()
-  }
+    if (targetTag && rollback) {
+      const idx = this.updates.findIndex(matches({ tag: targetTag }))
+      if (idx === -1) {
+        const previousTags = updates.map(u => u.tag)
+        // we don't know what versions are available yet
+        throw new Error(`your MyCloud was never previously deployed with version ${targetTag}
 
-  private _loadCurrentVersion = async () => {
-    if (!this.currentVersion) {
+Your previously deployed versions are (most recently deployed at the top):
 
+${previousTags.join('\n')}`)
+      }
     }
+
+    await this._update()
   }
 
   private _loadUpdates = async () => {
@@ -69,8 +87,43 @@ class Updater {
     return updates
   }
 
+  private _loadTargetTag = async () => {
+    // filter here, not above
+    // because applyPrerequisiteTransitionTags needs to see all updates
+    const { verb, updates, opts } = this
+    const { rollback, showReleaseCandidates } = opts
+    let choices = updates.slice()
+    const noRC = !rollback && !showReleaseCandidates
+    if (noRC) {
+      choices = choices.filter(update => !isReleaseCandidateTag(update.tag))
+    }
+
+    if (!choices.length) {
+      throw new Error(`no ${verb} available`)
+    }
+
+    let message
+    if (rollback) {
+      message = `Choose a version to roll back to (most recently deployed at the top)`
+    } else {
+      message = `Choose a version to update to`
+    }
+
+    const result = await inquirer.prompt([{
+      type: 'list',
+      name: 'tag',
+      message,
+      choices: choices.map(({ tag }) => ({
+        name: getChoiceTextForTag(tag),
+        value: tag
+      })),
+    }])
+
+    this.targetTag = result.tag
+  }
+
   private _update = async () => {
-    const { conf, opts, currentVersion, updates } = this
+    const { conf, opts, currentVersion, updates, verb } = this
     const {
       stackName,
       provider,
@@ -79,61 +132,33 @@ class Updater {
       rollback,
     } = opts
 
-    let { tag } = opts
     if (!(currentVersion.sortableTag && currentVersion.sortableTag > MIN_VERSION)) {
       throw new Error(`you have an old version of MyCloud which doesn't support the new update mechanism
   Please update manually this one time. See instructions on https://github.com/tradle/serverless`)
     }
 
-    const verb = rollback ? 'rollback' : 'update'
-    if (tag) {
-      if (!rollback) {
-        // TODO:
-        // check if the specified tag is smaller than current version
-        // and ask for confirmation
-      }
-    } else {
-      // filter here, not above
-      // because applyPrerequisiteTransitionTags needs to see all updates
-      let choices = updates
-      const noRC = !rollback && !showReleaseCandidates
-      if (noRC) {
-        choices = choices.filter(update => !isReleaseCandidateTag(update.tag))
-      }
-
-      if (!choices.length) {
-        throw new Error(`no ${verb} available`)
-      }
-
-      let message
-      if (rollback) {
-        message = `Choose a version to roll back to (most recent at the top)`
-      } else {
-        message = `Choose a version to update to`
-      }
-
-      const result = await inquirer.prompt([{
-        type: 'list',
-        name: 'tag',
-        message,
-        choices: choices.map(({ tag }) => ({
-          name: getChoiceTextForTag(tag),
-          value: tag
-        })),
-      }])
-
-      tag = result.tag
+    if (!this.targetTag) {
+      await this._loadTargetTag()
     }
 
+    if (!rollback && currentVersion.templateUrl) {
+      logger.info(`
+should the worst happen and you need to manually roll back to this version later, run:
+
+tradleconf update-manually --template-url "${currentVersion.templateUrl}"
+`)
+    }
+
+    const tag = this.targetTag
     if (!force) {
-      await this._applyPrerequisiteTransitionTags({ tag, updates })
+      await this._applyPrerequisiteTransitionTags()
     }
 
     const promise = await new Listr([
       {
         title: `load release ${tag} (grab a coffee)`,
         task: async ctx => {
-          const resp = await this._getUpdateWithRetry(tag)
+          const resp = await this._getUpdateWithRetry()
           if (!resp) return
 
           const { update, upToDate } = resp
@@ -186,11 +211,23 @@ class Updater {
     }
 
     if (ctx.upToDate && !ctx.willUpdate) {
-      logger.info(`your MyCloud is already up to date!`)
+      if (tag === currentVersion.tag) {
+        throw new Error(`your MyCloud is already up to date!`)
+      }
+
+      this._throwBackwardsError()
     }
   }
 
-  private _getUpdateWithRetry = async (tag: string):Promise<GetUpdateInfoResp> => {
+  private _throwBackwardsError = () => {
+    const { currentVersion, targetTag } = this
+    throw new Error(`your MyCloud is of a more recent version: ${currentVersion.tag}
+
+To force deploy ${targetTag}, run: tradleconf update --tag ${targetTag} --force`)
+  }
+
+  private _getUpdateWithRetry = async ():Promise<GetUpdateInfoResp> => {
+    const tag = this.targetTag
     const { conf, opts } = this
     const { provider } = opts
     let requested
@@ -214,9 +251,9 @@ class Updater {
     })
   }
 
-  private _applyPrerequisiteTransitionTags = async (tag) => {
-    const { updates } = this
-    const idx = updates.findIndex(update => update.tag === tag)
+  private _applyPrerequisiteTransitionTags = async () => {
+    const { updates, currentVersion, targetTag } = this
+    const idx = updates.findIndex(update => update.tag === targetTag)
     if (idx === -1) return
 
     const transition = updates.slice(0, idx).find(update => isTransitionReleaseTag(update.tag))
@@ -224,16 +261,13 @@ class Updater {
 
     logger.info(`you must apply the transition version first: ${transition.tag}`)
     await confirmOrAbort(`apply transition tag ${transition.tag} now?`)
-    await new Updater({
-      conf: this.conf,
-      opts: {
-        ...this.opts,
-        tag: transition.tag
-      },
-      currentVersion: this.currentVersion,
-      updates: this.updates,
+    await update(this.conf, {
+      ...this.opts,
+      force: true,
+      tag: transition.tag,
+      currentVersion,
+      updates,
     })
-    .update()
   }
 
   private _triggerUpdate = async (update) => {
@@ -260,4 +294,7 @@ const getChoiceTextForTag = (tag: string) => {
   return tag
 }
 
-export const update = (conf: Conf, opts: UpdateOpts) => new Updater({ conf, opts }).update()
+export const update = (
+  conf: Conf,
+  opts: UpdateOpts|UpdateHelperOpts
+) => new Updater({ conf, opts }).update()

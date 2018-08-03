@@ -124,6 +124,10 @@ export const init = async (conf: Conf) => {
           region
         })
 
+        if (!stackInfos.length) {
+          throw new Error('no stacks found')
+        }
+
         return stackInfos.map(({ name, id }) => ({
           name,
           value: { name, id }

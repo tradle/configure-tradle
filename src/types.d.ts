@@ -54,6 +54,7 @@ export interface UpdateOpts {
 export interface VersionInfo {
   tag: string
   sortableTag: string
+  templateUrl?: string
 }
 
 export type InvokeOpts = {
@@ -69,4 +70,9 @@ export type WaitStackOpts = {
 export interface GetUpdateInfoResp {
   update: VersionInfo
   upToDate: boolean
+}
+
+export interface ApplyUpdateOpts {
+  templateUrl: string
+  notificationTopics?: string[]
 }

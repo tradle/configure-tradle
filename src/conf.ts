@@ -28,6 +28,7 @@ import { AWSClients,
   WaitStackOpts,
   VersionInfo,
   GetUpdateInfoResp,
+  ApplyUpdateOpts,
 } from './types'
 import { Errors as CustomErrors } from './errors'
 import * as validate from './validate'
@@ -714,8 +715,14 @@ export class Conf {
   }
 
   public getCurrentVersion = async ():Promise<VersionInfo> => {
-    const { version } = await this.info()
-    return version
+    const versions = await this.exec({
+      args: ['listmyversions --limit 1'],
+      noWarning: true
+    })
+
+    return versions[0]
+    // const { version } = await this.info()
+    // return version
   }
 
   public listUpdates = async ({ provider }: {
@@ -774,6 +781,11 @@ export class Conf {
     })
   }
 
+  public updateManually = async (opts: ApplyUpdateOpts) => {
+    await this.applyUpdateAsCurrentUser(opts)
+    await this.waitForStackUpdate()
+  }
+
   public rollback = async (opts: UpdateOpts) => {
     this._ensureRemote(false)
     this._ensureStackNameKnown()
@@ -785,25 +797,10 @@ export class Conf {
     })
   }
 
-  public applyUpdateAsCurrentUser = async (update) => {
+  public applyUpdateAsCurrentUser = async (update: ApplyUpdateOpts) => {
+    this._ensureRemote(false)
     this._ensureStackNameKnown()
     const { templateUrl, notificationTopics } = update
-    // const opts = [
-    //   `--stack-name "${this.stackId}"`,
-    //   `--template-url "${templateUrl}"`,
-    //   '--capabilities CAPABILITY_NAMED_IAM',
-    // ]
-
-    // if (notificationTopics) {
-    //   const arns = notificationTopics.map(t => `"${t}"`).join(' ')
-    //   opts.push(`--notification-arns ${arns}`)
-    // }
-
-    // const { code, stderr, stdout } = shelljs.exec(
-    //   `aws cloudformation update-stack ${opts.join(' ')}`,
-    //   { silent: true }
-    // )
-
     const params:AWS.CloudFormation.UpdateStackInput = {
       StackName: this.stackId || this.stackName,
       TemplateURL: templateUrl,

@@ -121,6 +121,7 @@ const run = async (fn) => {
       ;(matchedCommand || program).outputHelp()
     }
 
+    process.exit()
     return
   }
 
@@ -290,22 +291,41 @@ const balanceCommand = program
   .allowUnknownOption(false)
   .action(createAction('balance'))
 
+const versionCommand = program
+  .command('get-current-version')
+  .description(`check your current MyCloud version`)
+  .allowUnknownOption(false)
+  .action(createAction('getCurrentVersion'))
+
+const listPreviousVersionsCommand = program
+  .command('list-previous-versions')
+  .description('list previous versions of your MyCloud deployment')
+  .allowUnknownOption(false)
+  .action(createAction('listPreviousVersions'))
+
 const updateCommand = program
   .command('update')
   .option('-t, --tag <versionTag>')
   .option('-f, --force', 'force update even if deployment is ahead of or equal to the specified version tag')
   .option('-c, --show-release-candidates', 'set if you want to list release candidate versions')
   // .option('-p, --provider <providerPermalink>', 'if you want to update from someone other than Tradle')
-  .description('updates your MyCloud to a given version')
+  .description('update your MyCloud')
   .allowUnknownOption(false)
   .action(createAction('update'))
+
+const updateManuallyCommand = program
+  .command('update-manually')
+  .option('-t, --template-url <templateUrl>', 'stack template url')
+  .description('[ADVANCED] update your MyCloud to a given stack template')
+  .allowUnknownOption(false)
+  .action(createAction('updateManually'))
 
 const rollbackCommand = program
   .command('rollback')
   .option('-t, --tag <versionTag>')
   .option('-c, --show-release-candidates', 'set if you want to list release candidate versions')
   // .option('-p, --provider <providerPermalink>', 'if you want to update from someone other than Tradle')
-  .description('rolls your MyCloud back to a previous version')
+  .description('roll your MyCloud back to a version you previously deployed')
   .allowUnknownOption(false)
   .action(createAction('rollback'))
 
